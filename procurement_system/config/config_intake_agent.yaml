@@ -1,0 +1,132 @@
+# ============================================================
+# INTAKE AGENT — Operational Configuration
+# File: procurement_system/config/config_intake_agent.yaml
+#
+# Version:  1.2.0
+# Changed:  2025-03-15
+# Owner:    procurement-platform-team
+#
+# CHANGELOG
+#   1.2.0  2025-03-15  Replaced magic numbers with documented values;
+#                      added clarification.timeout_hours + on_timeout;
+#                      aligned dead_letter_queue to logical key convention;
+#                      retry_delay_s moved to constants.py
+#   1.1.0  2025-03-15  Added output_validation section
+#   1.0.0  2025-03-15  Initial version
+#
+# SCOPE — this file contains ONLY settings that have no 
+# home in the project:
+#   - model parameters
+#   - prompt version + checksum
+#   - output_validation
+#   - clarification mechanics
+#   - routing targets
+#
+# Out of scope — handled elsewhere, do NOT duplicate here:
+#   - file paths                → project_paths.py
+#   - field definitions/types   → schemas/intake_schemas.py
+#   - enums / literals          → constants.py
+#   - default numeric values    → constants.py  (YAML overrides defaults)
+#   - observability config      → observability/tracing.py, metrics.py
+#   - logging config            → config/logging.yaml
+#   - LLM factory               → utils/llm.py
+#   - buying rules content      → config/enterprise_buying_rules.yaml
+# ============================================================
+
+intake_agent:
+
+  # ----------------------------------------------------------
+  # IDENTITY
+  # ----------------------------------------------------------
+  name: intake_agent
+  version: "1.2.0"
+
+  # ----------------------------------------------------------
+  # MODEL SELECTION (tier‑based)
+  # ----------------------------------------------------------
+  # Instead of specifying model name, temperature, max_tokens,
+  # and timeout directly here, we now use a logical tier.
+  # 
+  # The actual values are defined centrally in:
+  #   config/model_registry.yaml
+  #
+  # Available tiers:
+  #   - reasoning_heavy  (high‑accuracy, slower, for complex tasks)
+  #   - fast_cheap       (faster, cheaper, for simple tasks)
+  #
+  # For this agent (Analyst) we require deterministic and
+  # auditable decisions, therefore we use reasoning_heavy.
+  # ----------------------------------------------------------
+  model_tier: fast_cheap
+
+  # ----------------------------------------------------------
+  # PROMPT VERSIONING
+  # Logical names only — resolved to filesystem paths by
+  # project_paths.py. Python verifies checksums at startup.
+  #
+  # How to update checksums after editing a prompt file:
+  #   sha256sum procurement_system/prompts/intake_agent_system.txt
+  #   sha256sum procurement_system/prompts/intake_agent_user.txt
+  # ----------------------------------------------------------
+  prompt:
+    system_file: intake_agent_system      # → project_paths.PROMPTS_DIR
+    user_file:   intake_agent_user        # → project_paths.PROMPTS_DIR
+    version:     "1.0.0"
+    checksums:
+      system: sha256:PLACEHOLDER          # ⚠ Replace before production deploy
+      user:   sha256:PLACEHOLDER          # ⚠ Replace before production deploy
+
+  # ----------------------------------------------------------
+  # BUYING RULES INJECTION
+  # Logical name only — path resolved by project_paths.py.
+  # max_tokens_guard: token limit for injected rules text.
+  # Python warns and truncates if exceeded (1 token ≈ 4 chars).
+  # Default: constants.BUYING_RULES_MAX_TOKENS_GUARD
+  # ----------------------------------------------------------
+  buying_rules:
+    config_name: enterprise_buying_rules  # → project_paths.CONFIG_DIR
+    max_tokens_guard: 2000                # override: see constants.BUYING_RULES_MAX_TOKENS_GUARD
+
+  # ----------------------------------------------------------
+  # OUTPUT VALIDATION
+  # Field definitions live in schemas/intake_schemas.py — not here.
+  # on_failure.max_retries default: constants.DEFAULT_VALIDATION_MAX_RETRIES
+  # ----------------------------------------------------------
+  output_validation:
+    primary_schema:   intake_schemas.IntakeAgentOutput
+    secondary_schema: intake_schemas.ClarificationRequest
+    strict: true
+    log_failures: true
+    on_failure:
+      action: retry
+      max_retries: 2            # override: see constants.DEFAULT_VALIDATION_MAX_RETRIES
+      fallback: escalate
+
+  # ----------------------------------------------------------
+  # CLARIFICATION (Human-in-the-Loop)
+  # max_rounds default:    constants.MAX_CLARIFICATION_ROUNDS
+  # timeout_hours default: constants.CLARIFICATION_TIMEOUT_HOURS
+  # ----------------------------------------------------------
+  clarification:
+    max_rounds: 2               # override: see constants.MAX_CLARIFICATION_ROUNDS
+    on_max_rounds_exceeded: continue_with_flags
+    timeout_hours: 24           # override: see constants.CLARIFICATION_TIMEOUT_HOURS
+    on_timeout: escalate
+
+  # ----------------------------------------------------------
+  # ROUTING
+  # Node names must match registrations in
+  # graph/procurement_graph.py.
+  # notify_channel and dead_letter_queue are logical keys
+  # resolved by notification_service.py — never URLs or paths.
+  # retry_delay_s default: constants.DEFAULT_RETRY_DELAY_S
+  # ----------------------------------------------------------
+  routing:
+    on_proceed:  procurement
+    on_escalate: end
+    on_error:
+      action:            end
+      max_retries:       2      # override: see constants.DEFAULT_ROUTING_MAX_RETRIES
+      retry_delay_s:     5      # override: see constants.DEFAULT_RETRY_DELAY_S
+      notify_channel:    ops_alerts
+      dead_letter_queue: intake_errors_dlq

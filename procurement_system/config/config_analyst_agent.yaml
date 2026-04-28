@@ -1,0 +1,191 @@
+# ============================================================
+# ANALYST AGENT — Operational Configuration
+# File: procurement_system/config/config_analyst_agent.yaml
+#
+# Version:  1.1.0
+# Changed:  2025-03-15
+# Owner:    procurement-platform-team
+#
+# CHANGELOG
+#   1.1.0  2025-03-15  Corrected routing — explicit transitions per
+#                      FinalDecision value; separated business routing
+#                      from technical error handling
+#   1.0.0  2025-03-15  Initial production version
+#
+# SCOPE — this file contains ONLY:
+#   - model parameters
+#   - prompt version + checksum
+#   - output_validation
+#   - decision thresholds (risk and cost — agent-specific policy)
+#   - routing targets
+#
+# Out of scope — handled elsewhere, do NOT duplicate here:
+#   - file paths                → project_paths.py
+#   - field definitions/types   → schemas/analyst_schemas.py
+#   - enums / literals          → constants.py
+#   - default numeric values    → constants.py (YAML overrides defaults)
+#   - buying rules content      → config/enterprise_buying_rules.yaml
+#   - logging config            → config/logging.yaml
+#   - LLM factory               → utils/llm.py
+#   - technical error handling  → nodes/analyst_node.py (try/except)
+# ============================================================
+
+analyst_agent:
+
+  # ----------------------------------------------------------
+  # IDENTITY
+  # ----------------------------------------------------------
+  name: analyst_agent
+  version: "1.1.0"
+
+  # ----------------------------------------------------------
+  # MODEL SELECTION (tier‑based)
+  # ----------------------------------------------------------
+  # Instead of specifying model name, temperature, max_tokens,
+  # and timeout directly here, we now use a logical tier.
+  # 
+  # The actual values are defined centrally in:
+  #   config/model_registry.yaml
+  #
+  # Available tiers:
+  #   - reasoning_heavy  (high‑accuracy, slower, for complex tasks)
+  #   - fast_cheap       (faster, cheaper, for simple tasks)
+  #
+  # For this agent (Analyst) we require deterministic and
+  # auditable decisions, therefore we use reasoning_heavy.
+  # ----------------------------------------------------------
+  model_tier: reasoning_heavy
+
+  # ----------------------------------------------------------
+  # PROMPT VERSIONING
+  # Logical names only — resolved to filesystem paths by
+  # project_paths.py. Python verifies checksums at startup.
+  #
+  # How to update checksums after editing a prompt file:
+  #   sha256sum procurement_system/prompts/analyst_agent_system.txt
+  #   sha256sum procurement_system/prompts/analyst_agent_user.txt
+  # ----------------------------------------------------------
+  prompt:
+    system_file: analyst_agent_system         # → project_paths.PROMPTS_DIR
+    user_file:   analyst_agent_user           # → project_paths.PROMPTS_DIR
+    version:     "1.0.0"
+    checksums:
+      system: sha256:PLACEHOLDER              # ⚠ Replace before production deploy
+      user:   sha256:PLACEHOLDER              # ⚠ Replace before production deploy
+
+  # ----------------------------------------------------------
+  # DECISION THRESHOLDS
+  # Agent-specific policy — governs automatic decision routing.
+  # Python reads these values and passes them to the agent at runtime.
+  # Changing these values does NOT require code changes.
+  #
+  # risk_score: 1 (minimal) to 10 (critical) — from RiskAnalysis schema
+  # ----------------------------------------------------------
+  decision_thresholds:
+    risk_score:
+      auto_proceed:  3.0      # risk_score <= 3.0  → recommend PROCEED
+      auto_escalate: 7.5      # risk_score >= 7.5  → recommend ESCALATE
+                              # 3.0 < score < 7.5  → PROCEED_WITH_CONDITIONS
+
+    budget_adequacy:
+      insufficient_action: proceed_with_conditions  # flag but do not block
+      no_data_action:      proceed_with_conditions  # flag but do not block
+
+  # ----------------------------------------------------------
+  # OUTPUT VALIDATION
+  # Field definitions live in schemas/analyst_schemas.py.
+  # Stricter retry policy — financial decisions must not be
+  # silently skipped on validation failure.
+  # Technical errors (timeout, LLM failure) are handled by
+  # nodes/analyst_node.py (try/except) — not configured here.
+  # ----------------------------------------------------------
+  output_validation:
+    primary_schema: analyst_schemas.AnalystAgentOutput
+    strict: true
+    log_failures: true
+    on_failure:
+      action:      retry
+      max_retries: 3            # stricter — financial decision
+      fallback:    escalate     # after max_retries → route to human_review_node
+
+  # ----------------------------------------------------------
+  # OUTPUT STATE FIELDS
+  # Contract between this agent and the shared LangGraph state.
+  # type + required + nullable enforced by Python after LLM response.
+  # ----------------------------------------------------------
+  output_state_fields:
+
+    cost_analysis:
+      type: object              # CostAnalysis schema
+      required: true
+      nullable: false
+      description: Full TCO analysis with optimistic/realistic/pessimistic scenarios
+
+    risk_analysis:
+      type: object              # RiskAnalysis schema
+      required: true
+      nullable: false
+      description: Risk assessment with scored individual risks and overall level
+
+    final_recommendation:
+      type: object              # FinalRecommendation schema
+      required: true
+      nullable: false
+      description: Final decision with justification, conditions, and next steps
+
+    final_decision:
+      type: string
+      required: true
+      nullable: false
+      enum: [PROCEED, PROCEED_WITH_CONDITIONS, ESCALATE, REJECT]
+      description: >
+        Final procurement decision written to SharedState.
+        Must match final_recommendation.decision exactly.
+        Drives routing via transitions table below.
+
+    current_step:
+      type: string
+      required: true
+      nullable: false
+      const: analyst_completed
+      description: Sentinel value confirming analyst completion
+
+    decision_log:
+      type: object
+      required: true
+      nullable: false
+      description: >
+        Audit entry — timestamp, decision, risk_score, risk_level,
+        total_estimated_cost. Required for compliance audit trail.
+
+    errors:
+      type: array
+      items: string
+      required: true
+      nullable: false
+      description: Non-fatal errors or warnings encountered
+
+  # ----------------------------------------------------------
+  # ROUTING
+  # Explicit transition per FinalDecision value.
+  # Node names must match registrations in procurement_graph.py.
+  #
+  # PROCEED                 → orchestrator       (normal path)
+  # PROCEED_WITH_CONDITIONS → orchestrator       (normal path, flags forwarded)
+  # ESCALATE                → human_review_node  (risk_score >= auto_escalate)
+  # REJECT                  → end                (request rejected after analysis)
+  #
+  # Technical errors (LLM failure, timeout, parse error) are NOT
+  # routed here — handled by nodes/analyst_node.py try/except block,
+  # logged via utils/logger.py, and sent to dead_letter_queue.
+  # ----------------------------------------------------------
+  routing:
+    transitions:
+      PROCEED:                 orchestrator
+      PROCEED_WITH_CONDITIONS: orchestrator
+      ESCALATE:                human_review_node
+      REJECT:                  end
+
+    on_error:
+      dead_letter_queue: analyst_errors_dlq   # technical errors only
+      notify_channel:    ops_alerts

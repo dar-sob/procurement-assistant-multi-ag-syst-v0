@@ -1,0 +1,156 @@
+# =========================
+# Python bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# C extensions
+# =========================
+*.so
+
+# =========================
+# Packaging / build
+# =========================
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+sdist/
+var/
+wheels/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# =========================
+# Installer logs
+# =========================
+pip-log.txt
+pip-delete-this-directory.txt
+
+# =========================
+# Unit test / coverage
+# =========================
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# =========================
+# Type checkers
+# =========================
+.mypy_cache/
+.pyre/
+.pytype/
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+*.env
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# add
+*.ipynb
+
+# =========================
+# IDE / Editors
+# =========================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# Databases
+# =========================
+*.sqlite3
+*.db
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# =========================
+# Data science / ML artifacts
+# =========================
+data/
+datasets/
+models/
+checkpoints/
+wandb/
+mlruns/
+
+# =========================
+# Documentation artifacts
+# =========================
+docs/_build/
+
+# =========================
+# Ignor doc Word
+# =========================
+*.docx
+
+# =========================
+# Misc
+# =========================
+*.bak
+*.old
+*.orig
+# =========================
+# Documentation other
+# =========================
+_prywatne/
+observability/
+scripts/
+docs/

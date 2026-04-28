@@ -1,0 +1,12 @@
+[project]
+name = "procurement_system"
+version = "0.1.0"
+description = "Multi-Agent Procurement System"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.backends.legacy:build"
+
+[tool.setuptools.packages.find]
+where = ["."]

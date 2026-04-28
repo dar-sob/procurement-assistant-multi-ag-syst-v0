@@ -1,0 +1,154 @@
+# ============================================================
+
+# ORCHESTRATOR AGENT — User Prompt Template
+
+# File: procurement_system/prompts/orchestrator_user.txt
+
+#
+
+# Version:  1.0.0
+
+# Changed:  2026-03-27
+
+#
+
+# Loaded by: utils/prompt_loader.py (load_prompt, lru_cache)
+
+# Used by:   agents/orchestrator/agent.py
+
+# Sent as:   role="user" in the Anthropic API call
+
+#
+
+# Template variables — injected by Python at runtime:
+
+# {product_name}              validated_request.description
+
+# {category}                  state.category_id
+
+# {process_type}              state.process_type
+
+# {quantity}                  validated_request.quantity
+
+# {unit}                      validated_request.unit
+
+# {estimated_value_usd}       state.estimated_value_usd or "unknown"
+
+# {framework_agreement_id}    state.framework_agreement_id or "none"
+
+# {urgency}                   validated_request.urgency
+
+# {deadline}                  validated_request.deadline
+
+#
+
+# {supplier_recommendations}  JSON array — state.supplier_recommendations
+
+# {procurement_strategy}      state.procurement_strategy
+
+# {negotiation_points}        state.negotiation_points
+
+#
+
+# {cost_analysis}             JSON object — state.cost_analysis
+
+# {risk_analysis}             JSON object — state.risk_analysis
+
+# {final_recommendation}      JSON object — state.final_recommendation
+
+# {final_decision}            state.final_decision
+
+#
+
+# {decision_log}              JSON array — state.decision_log
+
+#
+
+# Change policy:
+
+# Any edit to this file requires:
+
+# 1. Version bump in config/config_orchestrator.yaml
+
+# 2. Updated checksum (sha256sum this file)
+
+# 3. Entry in CHANGELOG below
+
+#
+
+# CHANGELOG
+
+# 1.0.0  2026-03-27  Initial production version
+
+# ============================================================
+
+PURCHASE REQUEST (FROM INTAKE AGENT)
+────────────────────────────────────────────────────────────────────────────
+Product / Service        : {product_name}
+Category                 : {category}
+Process Type             : {process_type}
+Quantity                 : {quantity} {unit}
+Estimated Value (USD)    : {estimated_value_usd}
+Framework Agreement ID   : {framework_agreement_id}
+Urgency                  : {urgency}
+Delivery Deadline        : {deadline}
+────────────────────────────────────────────────────────────────────────────
+
+PROCUREMENT OUTPUT (FROM PROCUREMENT AGENT)
+════════════════════════════════════════════════════════════════════════════
+Supplier Recommendations:
+{supplier_recommendations}
+
+Procurement Strategy:
+{procurement_strategy}
+
+Negotiation Points:
+{negotiation_points}
+════════════════════════════════════════════════════════════════════════════
+
+ANALYSIS OUTPUT (FROM ANALYST AGENT)
+════════════════════════════════════════════════════════════════════════════
+Cost Analysis:
+{cost_analysis}
+
+Risk Analysis:
+{risk_analysis}
+
+Final Recommendation:
+{final_recommendation}
+
+Final Decision (authoritative):
+{final_decision}
+════════════════════════════════════════════════════════════════════════════
+
+AUDIT LOG (SHARED STATE)
+────────────────────────────────────────────────────────────────────────────
+{decision_log}
+────────────────────────────────────────────────────────────────────────────
+
+INSTRUCTIONS
+
+Execute all steps defined in your system instructions.
+
+You MUST:
+
+* Treat all above data as the single source of truth
+* NOT introduce any new data
+* NOT modify upstream values
+* Use final_decision exactly as provided (authoritative)
+
+If any required section is missing:
+
+* Record it in the errors field
+* Do NOT fabricate values
+* Omit it from the user-facing message
+
+Apply the Plan → Evaluate → Execute approach before producing output.
+
+Ensure:
+
+* Full consistency between final_decision and report
+* message_to_user is clear, concise, and non-technical
+* All audit log entries are preserved exactly
+
+Return ONLY structured output matching the required schema.

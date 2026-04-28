@@ -1,0 +1,193 @@
+# ============================================================
+# PROCUREMENT STRATEGY — Company Configuration
+# Multi-Agent Procurement System
+# ============================================================
+# This file defines company-specific procurement rules.
+# Edit this file to reflect your organization's policies.
+# All agents read from this config — no hardcoded values in code.
+# ============================================================
+
+procurement_strategy:
+
+  currency: USD
+
+  # ── VALUE THRESHOLDS & PROCESS TYPES ─────────────────────
+  # Define which procurement process applies at each spend level.
+  # Thresholds are the MINIMUM value to trigger that process type.
+  # ─────────────────────────────────────────────────────────
+  thresholds:
+    - label: catalog_purchase
+      display_name: "Catalog / Direct Purchase"
+      min_value: 0
+      max_value: 4999
+      description: "Purchase without tender. Single quote accepted. No approval required beyond line manager."
+      required_quotes: 1
+      approval_required: line_manager
+
+    - label: rfq
+      display_name: "RFQ — Request for Quotation"
+      min_value: 5000
+      max_value: 49999
+      description: "Minimum 3 competitive quotes required. Procurement agent must be involved."
+      required_quotes: 3
+      approval_required: procurement_manager
+
+    - label: formal_rfq
+      display_name: "Formal RFQ / Tender"
+      min_value: 50000
+      max_value: 249999
+      description: "Formal RFQ process. Written specifications required. Evaluation committee recommended."
+      required_quotes: 5
+      approval_required: director
+
+    - label: strategic_sourcing
+      display_name: "RFP / Strategic Sourcing"
+      min_value: 250000
+      max_value: null             # null = no upper limit
+      description: "Full RFP or strategic sourcing process. Board-level approval may be required."
+      required_quotes: 5
+      approval_required: board
+      notes: "Consider long-term partnership, TCO analysis mandatory, legal review required."
+
+
+  # ── PURCHASE CATEGORIES ───────────────────────────────────
+  # Define all valid procurement categories for your organization.
+  # Add, remove, or rename categories to match your spend taxonomy.
+  # ─────────────────────────────────────────────────────────
+  categories:
+    - id: IT_HARDWARE
+      label: "IT Hardware / End-User Devices"
+      examples:
+        - computers
+        - laptops
+        - notebooks
+        - desktops
+        - monitors
+        - keyboards and mice
+        - tablets
+        - docking stations
+      preferred_process: catalog_purchase      # <-- zmienione na catalog_purchase dla małych zamówień
+      notes: "Standard end-user IT equipment. Use catalog_purchase for orders under $15,000 if no special requirements."
+
+    - id: IT_SOFTWARE
+      label: "IT / Software"
+      examples:
+        - software licenses
+        - SaaS subscriptions
+        - cloud services
+        - IT hardware
+        - cybersecurity tools
+      preferred_process: rfq
+      notes: "Check existing enterprise agreements before sourcing (Microsoft, AWS, Google)."
+
+    - id: RAW_MATERIALS
+      label: "Raw Materials"
+      examples:
+        - metals and alloys
+        - plastics and polymers
+        - chemicals
+        - packaging materials
+        - electronic components
+      preferred_process: formal_rfq
+      notes: "Verify quality certifications and supply chain continuity."
+
+    - id: PROFESSIONAL_SERVICES
+      label: "Professional Services"
+      examples:
+        - consulting
+        - legal services
+        - accounting and audit
+        - training and coaching
+        - recruitment
+      preferred_process: rfq
+      notes: "Statement of Work (SOW) required for engagements over $10,000."
+
+    - id: OFFICE_SUPPLIES
+      label: "Office Supplies"
+      examples:
+        - stationery
+        - paper and printing
+        - office furniture
+        - cleaning supplies
+      preferred_process: catalog_purchase
+      notes: "Use preferred supplier catalog where available."
+
+    - id: LOGISTICS
+      label: "Logistics / Transport"
+      examples:
+        - freight and shipping
+        - warehousing
+        - last-mile delivery
+        - customs and duties
+      preferred_process: rfq
+      notes: "Check existing framework agreements with logistics providers."
+
+    - id: MACHINERY
+      label: "Machinery / Equipment"
+      examples:
+        - production machinery
+        - laboratory equipment
+        - tools and instruments
+        - vehicles
+      preferred_process: formal_rfq
+      notes: "Total Cost of Ownership (TCO) analysis mandatory. Include maintenance costs."
+
+    - id: MARKETING
+      label: "Marketing"
+      examples:
+        - advertising
+        - creative agencies
+        - events and sponsorships
+        - print and media
+        - digital marketing
+      preferred_process: rfq
+      notes: "Align with Marketing department before sourcing."
+
+    - id: OTHER
+      label: "Other / Uncategorized"
+      examples: []
+      preferred_process: rfq
+      notes: "Procurement manager to classify before process continues."
+
+
+  # ── FRAMEWORK AGREEMENTS ─────────────────────────────────
+  # List of active framework agreements with preferred suppliers.
+  # If a matching agreement exists, catalog_purchase process may apply
+  # regardless of value threshold.
+  # ─────────────────────────────────────────────────────────
+  framework_agreements:
+    - agreement_id: FA-001
+      supplier: "Placeholder Supplier A"
+      category: IT_SOFTWARE
+      valid_until: "2026-12-31"
+      max_order_value: 50000
+      notes: "Preferred supplier for software licenses. Direct PO allowed."
+
+    - agreement_id: FA-002
+      supplier: "Placeholder Supplier B"
+      category: OFFICE_SUPPLIES
+      valid_until: "2025-12-31"
+      max_order_value: 10000
+      notes: "Annual stationery and office supplies contract."
+
+    - agreement_id: FA-003
+      supplier: "Placeholder Supplier C"
+      category: LOGISTICS
+      valid_until: "2026-06-30"
+      max_order_value: 100000
+      notes: "Preferred freight partner for EU shipments."
+
+  # ── ESCALATION RULES ─────────────────────────────────────
+  escalation:
+    - trigger: "category == OTHER AND estimated_value > 5000"
+      action: "request_category_classification"
+      notes: "Escalate only if value is significant and truly uncategorized."
+    - trigger: "category == OTHER AND estimated_value <= 15000"
+      action: "proceed_with_rfq"          # zamiast eskalacji
+      notes: "For small/medium orders in OTHER - default to RFQ instead of full escalation."
+    - trigger: "estimated_value > 250000"
+      action: "route_to_strategic_sourcing"
+    - trigger: "urgency == critical AND estimated_value > 50000"
+      action: "notify_procurement_director"
+    - trigger: "framework_agreement_expired"
+      action: "flag_for_renewal_and_continue"

@@ -1,0 +1,90 @@
+# first with prowiders of models
+# procurement_system/config/model_registry.yaml
+
+_meta:
+  version: "1.1"
+  updated: "2026-04-03"
+
+# ---------------------------------------------------------------------------
+# reasoning_heavy — complex analysis, multi-step reasoning, legal/risk review
+# ---------------------------------------------------------------------------
+reasoning_heavy:
+  fallback_strategy: "on_error"
+  primary:
+    model: "deepseek/deepseek-chat"        # lub deepseek-reasoner / R1 jeśli dostępny
+    temperature: 0.1
+    max_tokens: 8192
+    timeout: 120
+  fallback:
+    - model: "anthropic/claude-sonnet-4-6"
+      temperature: 0.1
+      max_tokens: 8192
+      timeout: 90
+    - model: "openai/gpt-4o"
+      temperature: 0.15
+      max_tokens: 4096
+      timeout: 90
+
+# ---------------------------------------------------------------------------
+# balanced — standard agent tasks, moderate complexity
+# ---------------------------------------------------------------------------
+balanced:
+  fallback_strategy: "on_error"
+  primary:
+    model: "anthropic/claude-sonnet-4-6"
+    temperature: 0.2
+    max_tokens: 4096
+    timeout: 60
+  fallback:
+    - model: "openai/gpt-4o"               # lub gpt-5.4-mini jeśli masz dostęp
+      temperature: 0.2
+      max_tokens: 4096
+      timeout: 60
+    - model: "deepseek/deepseek-chat"
+      temperature: 0.2
+      max_tokens: 4096
+      timeout: 90
+
+# ---------------------------------------------------------------------------
+# fast_cheap — classification, extraction, simple routing
+# ---------------------------------------------------------------------------
+fast_cheap:
+  fallback_strategy: "on_error"
+  primary:
+    model: "anthropic/claude-sonnet-4-6"
+    temperature: 0.3
+    max_tokens: 1024
+    timeout: 30
+  fallback:
+    - model: "openrouter/minimax/minimax-m2.5:free"
+      temperature: 0.3
+      max_tokens: 1024
+      timeout: 30
+    - model: "deepseek/deepseek-chat"
+      temperature: 0.3
+      max_tokens: 1024
+      timeout: 40
+    - model: "openai/gpt-4o-mini"
+      temperature: 0.3
+      max_tokens: 1024
+      timeout: 60
+    - model: "groq/llama-3.1-8b-instant"
+      temperature: 0.3
+      max_tokens: 1024
+      timeout: 30
+    - model: "huggingface/MiniMaxAI/MiniMax-M2.7"
+      temperature: 0.3
+      max_tokens: 1024
+      timeout: 30
+    - model: "openrouter/z-ai/glm-4.5-air:free"
+      temperature: 0.3
+      max_tokens: 1024
+      timeout: 30
+    - model: "openrouter/openai/gpt-oss-120b:free"
+      temperature: 0.3
+      max_tokens: 1024
+      timeout: 30
+    - model: "bedrock/ap-northeast-1/6-month-commitment/anthropic.claude-instant-v1"
+      temperature: 0.3
+      max_tokens: 1024
+      timeout: 30

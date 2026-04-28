@@ -1,0 +1,54 @@
+# ============================================================
+# PROCUREMENT AGENT — User Prompt Template
+# File: procurement_system/prompts/procurement_agent_user.txt
+#
+# Version:  1.0.0
+# Changed:  2025-03-15
+#
+# Loaded by: utils/prompt_loader.py (load_prompt, lru_cache)
+# Used by:   agents/procurement/agent.py
+# Sent as:   role="user" in the Anthropic API call
+#
+# Template variables — injected by Python at runtime:
+#   {product_name}       validated_request.description
+#   {category}           state.category_id
+#   {process_type}       state.process_type
+#   {quantity}           validated_request.quantity
+#   {unit}               validated_request.unit
+#   {estimated_budget}   state.estimated_value_usd or "unknown"
+#   {requirements}       JSON list of validated_request.requirements
+#   {deadline}           validated_request.deadline or "not specified"
+#   {urgency}            validated_request.urgency or "medium"
+#
+# Change policy:
+#   Any edit to this file requires:
+#     1. Version bump in config/config_procurement_agent.yaml
+#     2. Updated checksum (sha256sum this file)
+#     3. Entry in CHANGELOG below
+#
+# CHANGELOG
+#   1.0.0  2025-03-15  Initial production version
+# ============================================================
+
+
+PURCHASE REQUEST
+────────────────────────────────────────────────────────────────────────────
+Product / Service : {product_name}
+Category          : {category}
+Process Type      : {process_type}
+Quantity          : {quantity} {unit}
+Estimated Budget  : {estimated_budget}
+Delivery Deadline : {deadline}
+Urgency           : {urgency}
+────────────────────────────────────────────────────────────────────────────
+Requirements:
+{requirements}
+────────────────────────────────────────────────────────────────────────────
+
+
+Execute all steps defined in your instructions.
+
+Apply the Plan → Evaluate → Execute approach before producing output.
+Base every recommendation exclusively on the request data above.
+Do not invent requirements, certifications, or constraints
+not explicitly stated in this message.
