@@ -1,3 +1,4 @@
+![Banner](PSABaner.jpg)
 # Procurement Asystent
 
 > **An AI-powered multi-agent system for automating enterprise procurement workflows.**  
@@ -77,6 +78,39 @@ The system is built as a directed agent graph using **LangGraph**. Each agent ru
 All agents share state through `SharedState`. The graph is built in `procurement_system/graph/procurement_graph.py`.
 
 ---
+
+## Inter-Agent Communication Protocol
+
+The multi‑agent procurement system uses a **state‑centric communication model** where agents never communicate directly. Instead, all coordination happens through a single, shared state object (`SharedState`) that flows through the LangGraph execution pipeline. This design ensures full auditability, loose coupling, and deterministic error recovery.
+
+### Core Principles
+
+| Principle | Implementation |
+|-----------|----------------|
+| **No direct agent‑to‑agent calls** | Agents read from and write to `SharedState` only. |
+| **Write‑once, read‑many** | Each domain field is owned by exactly one agent (e.g. `intake.validated_request`), but can be read by any downstream agent. |
+| **Decision‑driven routing** | Agents set `routing_decision` or `final_decision` fields. The graph’s conditional edges use these values to determine the next node. |
+| **Append‑only audit trail** | Every agent appends to `decision_log` and `errors` using `Annotated[list[str], operator.add]`. No overwriting. |
+
+### Shared State Structure
+
+All agents receive the same `SharedState` TypedDict (defined in `procurement_system/state.py`):
+
+```python
+class SharedState(TypedDict, total=False):
+    # Global fields (read/write by multiple agents)
+    raw_request: str
+    routing_decision: Literal["proceed", "escalate"]
+    final_decision: Literal["PROCEED", "PROCEED_WITH_CONDITIONS", "ESCALATE", "REJECT"]
+    decision_log: Annotated[list[str], operator.add]
+    errors: Annotated[list[str], operator.add]
+
+    # Domain‑specific sections (each owned by one agent)
+    intake: IntakeState       # written by Intake Agent
+    procurement: ProcurementState  # written by Procurement Agent
+    analyst: AnalystState     # written by Analyst Agent
+    orchestrator: OrchestratorState  # written by Orchestrator Agent
+```
 
 ## Agents
 
@@ -479,11 +513,3 @@ tavily-python
 
 **Version:** 0.1.0 — Early development  
 The core multi-agent workflow is functional via CLI. Features such as a web interface, persistent storage, and extended integrations are not yet implemented.
-
----
-
-## License
-
-All rights reserved.
-This code is provided for educational and demonstration purposes only.
-Commercial use is prohibited without explicit permission.
